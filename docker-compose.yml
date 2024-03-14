@@ -1,0 +1,27 @@
+version: '3.4'
+
+networks:
+  weather-bridge:
+    driver: bridge
+
+volumes:
+  cache:
+    driver: local
+
+services:
+
+  weather-example:
+    build:
+        context: .
+        dockerfile: examples/DockerExample/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=80
+    networks:
+      - weather-bridge
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - 0:80
+    deploy:
+      replicas: 5
