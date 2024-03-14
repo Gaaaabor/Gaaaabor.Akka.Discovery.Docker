@@ -24,14 +24,16 @@ builder.Services.AddAkka("weather", builder =>
         .WithClustering(new ClusterOptions { Roles = new[] { Role } })
         .WithClusterBootstrap(serviceName: "exampleservice")
         .WithAkkaManagement(port: ManagementPort)
-        .WithDockerDiscovery()
-        .WithDockerDiscovery(new DockerServiceDiscoveryOptions
-        {
-            Endpoint = "unix:///var/run/docker.sock",
-            Ports = new() { ManagementPort },
-            ContainerFilters = new() { new Filter("status", "running") },
-            NetworkNameFilter = "weather-bridge",
-        })
+        //.WithDockerDiscovery()
+        // OR
+        //.WithDockerDiscovery(new DockerServiceDiscoveryOptions
+        //{
+        //    Endpoint = "unix:///var/run/docker.sock",
+        //    Ports = new() { ManagementPort },
+        //    ContainerFilters = new() { new Filter("status", "running") },
+        //    NetworkNameFilter = "weather-bridge",
+        //})
+        // OR
         .WithDockerDiscovery(options =>
         {
             options.Endpoint = "unix:///var/run/docker.sock";
