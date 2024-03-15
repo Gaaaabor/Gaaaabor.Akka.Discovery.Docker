@@ -1,9 +1,11 @@
 ﻿using Akka.Actor.Setup;
 using Akka.Hosting;
+using Docker.DotNet.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 
 namespace Gaaaabor.Akka.Discovery.Docker
 {
@@ -16,12 +18,27 @@ namespace Gaaaabor.Akka.Discovery.Docker
         public Type Class { get; } = typeof(DockerServiceDiscovery);
 
         /// <summary>
-        /// Additional filtering rules to be applied to Containers
+        /// Filtering rules for the Docker API itself (API based filtering).
+        /// For more info see <see href="https://github.com/dotnet/Docker.DotNet/issues/303"/>
+        /// </summary>
+        public ContainersListParameters ContainersListParameters { get; set; }
+
+        /// <summary>
+        /// Additional filtering rules to be applied to ContainerListResponse (API result filtering).
+        /// Filterable properties of <see cref="ContainerListResponse"/>:
+        /// <list type="bullet">
+        /// <item>ID: new Filter("ID", "aa58b5ac20cbcc9d76761b08aec92189b68b29a10bfebbb0b91c1cdd3dbeec73")</item>
+        /// <item>Image: new Filter("Image", "gaaaaborakkadiscoverydocker-weather-example")</item>
+        /// <item>ImageID: new Filter("ImageID", "sha256:639dd40c7818113346626d682c0015f366f3574a0f9056d4cfef497ded23e5b1")</item>
+        /// <item>State: new Filter("State", "running")</item>
+        /// <item>Names: new Filter("Names", "weather-example")</item>
+        /// <item>Labels: new Filter("Labels", "com.docker.compose.service:weather-example")</item>
+        /// </list>
         /// </summary>
         public List<Filter> ContainerFilters { get; set; } = new List<Filter>();
 
         /// <summary>
-        /// Additional filtering rules to be applied to Networks
+        /// Additional filtering rules to be applied to Networks (API result filtering).
         /// </summary>
         public string NetworkNameFilter { get; set; }
 
@@ -31,7 +48,7 @@ namespace Gaaaabor.Akka.Discovery.Docker
         public List<int> Ports { get; set; } = new List<int>();
 
         /// <summary>        
-        /// Client may use specified endpoint.
+        /// Docker API endpoint.
         /// </summary>
         public string Endpoint { get; set; } = "unix:///var/run/docker.sock";
 
@@ -42,9 +59,14 @@ namespace Gaaaabor.Akka.Discovery.Docker
         /// <param name="setup"></param>
         public void Apply(AkkaConfigurationBuilder builder, Setup setup = null)
         {
-            var sb = new StringBuilder();
-            sb.AppendLine($"{FullPath} {{");
-            sb.AppendLine($"class = {Class.AssemblyQualifiedName.ToHocon()}");
+            var stringBuilder = new StringBuilder();
+            stringBuilder.AppendLine($"{FullPath} {{");
+            stringBuilder.AppendLine($"class = {Class.AssemblyQualifiedName.ToHocon()}");
+
+            if (ContainersListParameters != null)
+            {
+                stringBuilder.AppendLine($"containerslistparameters = {JsonSerializer.Serialize(ContainersListParameters).ToHocon()}");
+            }
 
             if (ContainerFilters != null)
             {
@@ -52,27 +74,27 @@ namespace Gaaaabor.Akka.Discovery.Docker
                     .SelectMany(filter => filter.Values.Select(value => (filter.Name, Tag: value)))
                     .Select(t => $"{t.Name}={t.Tag}");
 
-                sb.AppendLine($"containerfilters = {string.Join(";", filters).ToHocon()}");
+                stringBuilder.AppendLine($"containerfilters = {string.Join(";", filters).ToHocon()}");
             }
 
             if (!string.IsNullOrEmpty(NetworkNameFilter))
             {
-                sb.AppendLine($"networknamefilter = {NetworkNameFilter.ToHocon()}");
+                stringBuilder.AppendLine($"networknamefilter = {NetworkNameFilter.ToHocon()}");
             }
 
             if (Ports != null)
             {
-                sb.AppendLine($"ports = [{string.Join(",", Ports)}]");
+                stringBuilder.AppendLine($"ports = [{string.Join(",", Ports)}]");
             }
 
             if (!string.IsNullOrEmpty(Endpoint))
             {
-                sb.AppendLine($"endpoint = {Endpoint.ToHocon()}");
+                stringBuilder.AppendLine($"endpoint = {Endpoint.ToHocon()}");
             }
 
-            sb.AppendLine("}");
+            stringBuilder.AppendLine("}");
 
-            builder.AddHocon(sb.ToString(), HoconAddMode.Prepend);
+            builder.AddHocon(stringBuilder.ToString(), HoconAddMode.Prepend);
         }
     }
 }

@@ -7,7 +7,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gaaaabor.Akka.Discovery.Doc
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DockerExample", "examples\DockerExample\DockerExample.csproj", "{2F0C9530-8F65-4301-B9FF-E536F45F99BA}"
 EndProject
-Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-compose.dcproj", "{852F4E75-4BBA-443F-A69D-2B9DCE7241F1}"
+Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-compose.dcproj", "{5B0170F4-A930-4DE9-9F94-E5A314CAD03B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -23,10 +23,9 @@ Global
 		{2F0C9530-8F65-4301-B9FF-E536F45F99BA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2F0C9530-8F65-4301-B9FF-E536F45F99BA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2F0C9530-8F65-4301-B9FF-E536F45F99BA}.Release|Any CPU.Build.0 = Release|Any CPU
-		{852F4E75-4BBA-443F-A69D-2B9DCE7241F1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{852F4E75-4BBA-443F-A69D-2B9DCE7241F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{852F4E75-4BBA-443F-A69D-2B9DCE7241F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{852F4E75-4BBA-443F-A69D-2B9DCE7241F1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5B0170F4-A930-4DE9-9F94-E5A314CAD03B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5B0170F4-A930-4DE9-9F94-E5A314CAD03B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5B0170F4-A930-4DE9-9F94-E5A314CAD03B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

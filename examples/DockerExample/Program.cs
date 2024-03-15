@@ -30,7 +30,20 @@ builder.Services.AddAkka("weather", builder =>
         //{
         //    Endpoint = "unix:///var/run/docker.sock",
         //    Ports = new() { ManagementPort },
-        //    ContainerFilters = new() { new Filter("status", "running") },
+        //    ContainersListParameters = new Docker.DotNet.Models.ContainersListParameters
+        //    {
+        //        All = true,
+        //        Filters = new Dictionary<string, IDictionary<string, bool>>
+        //        {
+        //            { "status", new Dictionary<string, bool>
+        //                {
+        //                    { "running", true},
+        //                    { "created", true},
+        //                }
+        //            }
+        //        }
+        //    },
+        //    ContainerFilters = new() { new Filter("names", "weather-example"), new Filter("labels", "com.docker.compose.service:weather-example") },
         //    NetworkNameFilter = "weather-bridge",
         //})
         // OR
@@ -38,9 +51,23 @@ builder.Services.AddAkka("weather", builder =>
         {
             options.Endpoint = "unix:///var/run/docker.sock";
             options.Ports = new() { ManagementPort };
+            options.ContainersListParameters = new Docker.DotNet.Models.ContainersListParameters
+            {
+                All = true,
+                Filters = new Dictionary<string, IDictionary<string, bool>>
+                {
+                    { "status", new Dictionary<string, bool>
+                        {
+                            { "running", true},
+                            { "created", true},
+                        }
+                    }
+                }
+            };
             options.ContainerFilters = new()
             {
-                new Filter("status", "running")
+                //new Filter("names", "weather-example"),
+                new Filter("labels", "com.docker.compose.service:weather-example")
             };
             options.NetworkNameFilter = "weather-bridge";
         })

@@ -15,3 +15,7 @@ The service discovery uses the Docker API with Dotnet.Docker to get the running 
 
 For more info on Docker.Dotnet check the project's site here https://www.nuget.org/profiles/Docker.DotNet
 For more info in Akka Cluster check the project's site here https://getakka.net/articles/clustering/cluster-overview.html
+
+The attached "ExampleContainerListResponse.json" contains a serialized example for a ContainerListResponse.
+This response is the result of the Docker.DotNet library's "ListContainersAsync" method, this is used to search for containers as potential members of the cluster.
+The example can be helpful to create ContainerFilters (API result filters).

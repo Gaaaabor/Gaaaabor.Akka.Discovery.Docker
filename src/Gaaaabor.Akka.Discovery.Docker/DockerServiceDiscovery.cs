@@ -1,14 +1,14 @@
 ﻿using Akka.Actor;
-using Akka.Configuration;
 using Akka.Discovery;
 using Akka.Event;
 using Docker.DotNet;
 using Docker.DotNet.Models;
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using System.Net;
+using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Gaaaabor.Akka.Discovery.Docker
@@ -18,18 +18,23 @@ namespace Gaaaabor.Akka.Discovery.Docker
         private readonly ExtendedActorSystem _system;
         private readonly ILoggingAdapter _logger;
         private readonly DockerDiscoverySettings _dockerDiscoverySettings;
+        private readonly Dictionary<string, Func<Filter, ContainerListResponse, bool>> _expressionCache;
 
         public DockerServiceDiscovery(ExtendedActorSystem system)
         {
-            _logger = Logging.GetLogger(system, typeof(DockerServiceDiscovery));
             _system = system;
-
+            _logger = Logging.GetLogger(system, typeof(DockerServiceDiscovery));
             _dockerDiscoverySettings = DockerDiscoverySettings.Create(system.Settings.Config.GetConfig("akka.discovery.docker"));
+            _expressionCache = new Dictionary<string, Func<Filter, ContainerListResponse, bool>>(StringComparer.OrdinalIgnoreCase);
+
+            BuildSimpleExpressionCache();
         }
 
         public override async Task<Resolved> Lookup(Lookup lookup, TimeSpan resolveTimeout)
         {
-            var addresses = await GetAddressesAsync();
+            var cancellationTokenSource = new CancellationTokenSource(resolveTimeout);
+
+            var addresses = await GetAddressesAsync(cancellationTokenSource.Token);
 
             var resolvedTargets = new List<ResolvedTarget>();
             if (_dockerDiscoverySettings?.Ports is null || !_dockerDiscoverySettings.Ports.Any())
@@ -48,7 +53,7 @@ namespace Gaaaabor.Akka.Discovery.Docker
             return new Resolved(lookup.ServiceName, resolvedTargets);
         }
 
-        private async Task<IEnumerable<IPAddress>> GetAddressesAsync()
+        private async Task<IEnumerable<IPAddress>> GetAddressesAsync(CancellationToken cancellationToken)
         {
             var addresses = new List<IPAddress>();
 
@@ -62,35 +67,33 @@ namespace Gaaaabor.Akka.Discovery.Docker
                     throw new Exception("Endpoint cannot be null or empty!");
                 }
 
-                var dockerClientConfiguration = new DockerClientConfiguration(new Uri(endpoint));
-
-                var containersListParameters = new ContainersListParameters
-                {
-                    All = true,
-                    Filters = new Dictionary<string, IDictionary<string, bool>>()
-                };
-
-                if (_dockerDiscoverySettings.ContainerFilters?.Any() is true)
-                {
-                    containersListParameters.Filters = GetContainerFilters();
-                }
-
                 IList<ContainerListResponse> containers;
+
+                var dockerClientConfiguration = new DockerClientConfiguration(new Uri(endpoint));
                 using (var client = dockerClientConfiguration.CreateClient())
                 {
-                    containers = await client.Containers.ListContainersAsync(containersListParameters);
+                    var containersListParameters = _dockerDiscoverySettings.ContainersListParameters ?? new ContainersListParameters();
+                    containers = await client.Containers.ListContainersAsync(containersListParameters, cancellationToken);
                 }
 
-                if (containers == null)
+                if (containers is null)
                 {
                     return addresses;
                 }
 
                 var rawIpAddresses = new List<string>();
+
+                containers = ApplyContainerFilters(containers).ToList();
+
                 foreach (var container in containers)
                 {
-                    if (container.NetworkSettings == null || container.NetworkSettings.Networks == null)
+                    if (container.NetworkSettings is null || container.NetworkSettings.Networks is null)
                     {
+                        if (container.Ports != null)
+                        {
+                            rawIpAddresses.AddRange(container.Ports.Where(x => !string.IsNullOrEmpty(x.IP)).Select(x => x.IP));
+                        }
+
                         continue;
                     }
 
@@ -128,50 +131,88 @@ namespace Gaaaabor.Akka.Discovery.Docker
             return addresses;
         }
 
-        private Dictionary<string, IDictionary<string, bool>> GetContainerFilters()
+        private IEnumerable<ContainerListResponse> ApplyContainerFilters(IEnumerable<ContainerListResponse> containers)
         {
-            var containerFilters = new Dictionary<string, IDictionary<string, bool>>();
-
-            foreach (var containerFilter in _dockerDiscoverySettings.ContainerFilters)
+            foreach (var container in containers)
             {
-                if (!containerFilters.TryGetValue(containerFilter.Name, out var filters))
+                if (IsContainerFiltersMatching(container))
                 {
-                    filters = new Dictionary<string, bool>();
-                    containerFilters.Add(containerFilter.Name, filters);
-                }
-
-                foreach (var filter in containerFilter.Values.Select(x => new KeyValuePair<string, bool>(x, true)))
-                {
-                    filters.Add(filter);
+                    yield return container;
                 }
             }
-
-            return containerFilters;
         }
 
-        internal static ImmutableList<Filter> ParseFiltersString(string filtersString)
+        private bool IsContainerFiltersMatching(ContainerListResponse container)
         {
-            var filters = new List<Filter>();
-
-            if (filtersString is null)
+            foreach (var containerFilter in _dockerDiscoverySettings.ContainerFilters)
             {
-                return filters.ToImmutableList();
+                var expression = _expressionCache[containerFilter.Name];
+                if (!expression(containerFilter, container))
+                {
+                    return false;
+                }
             }
 
-            var kvpList = filtersString.Split(';');
-            foreach (var kvp in kvpList)
+            return true;
+        }
+
+        private void BuildSimpleExpressionCache()
+        {
+            var properties = typeof(ContainerListResponse).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            foreach (var property in properties)
             {
-                if (string.IsNullOrEmpty(kvp))
-                    continue;
+                switch (property.Name)
+                {
+                    case string name when nameof(ContainerListResponse.ID).Equals(name, StringComparison.OrdinalIgnoreCase):
+                        _expressionCache.Add(property.Name, (filter, container) => filter.Values.Any(filterValue => container.ID.Contains(filterValue)));
+                        break;
 
-                var pair = kvp.Split('=');
-                if (pair.Length != 2)
-                    throw new ConfigurationException($"Failed to parse one of the key-value pairs in filters: {kvp}");
+                    case string name when nameof(ContainerListResponse.Image).Equals(name, StringComparison.OrdinalIgnoreCase):
+                        _expressionCache.Add(property.Name, (filter, container) => filter.Values.Any(filterValue => container.Image.Contains(filterValue)));
+                        break;
 
-                filters.Add(new Filter(pair[0], pair[1].Split(',').Where(s => !string.IsNullOrWhiteSpace(s)).ToList()));
+                    case string name when nameof(ContainerListResponse.ImageID).Equals(name, StringComparison.OrdinalIgnoreCase):
+                        _expressionCache.Add(property.Name, (filter, container) => filter.Values.Any(filterValue => container.ImageID.Contains(filterValue)));
+                        break;
+
+                    case string name when nameof(ContainerListResponse.State).Equals(name, StringComparison.OrdinalIgnoreCase):
+                        _expressionCache.Add(property.Name, (filter, container) => filter.Values.Any(filterValue => container.State.Contains(filterValue)));
+                        break;
+
+                    case string name when nameof(ContainerListResponse.Names).Equals(name, StringComparison.OrdinalIgnoreCase):
+                        _expressionCache.Add(property.Name, (filter, container) => filter.Values.Any(filterValue => container.Names.Any(containerName => containerName.Contains(filterValue))));
+                        break;
+
+                    case string name when nameof(ContainerListResponse.Labels).Equals(name, StringComparison.OrdinalIgnoreCase):
+
+                        _expressionCache.Add(property.Name, (filter, container) =>
+                        {
+                            if (filter.Values is null)
+                            {
+                                return false;
+                            }
+
+                            var result = true;
+                            foreach (var value in filter.Values)
+                            {
+                                var split = value.Split(new[] { ':' }, StringSplitOptions.RemoveEmptyEntries);
+                                if (split.Length == 2)
+                                {
+                                    result &= container.Labels.TryGetValue(split[0], out var labelValue) && labelValue.Contains(split[1]);
+                                }
+                            }
+
+                            return result;
+                        });
+
+                        break;
+
+                    default:
+                        break;
+                }
             }
 
-            return filters.ToImmutableList();
+            _logger.Info("[DockerServiceDiscovery] Simple expression cache successfully built.");
         }
     }
 }
