@@ -97,6 +97,8 @@ namespace Gaaaabor.Akka.Discovery.Docker
                 stringBuilder.AppendLine($"endpoint = {Endpoint.ToHocon()}");
             }
 
+            stringBuilder.AppendLine($"useswarm = {UseSwarm.ToHocon()}");            
+
             stringBuilder.AppendLine("}");
 
             builder.AddHocon(stringBuilder.ToString(), HoconAddMode.Prepend);
