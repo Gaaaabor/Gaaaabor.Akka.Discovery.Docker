@@ -53,6 +53,11 @@ namespace Gaaaabor.Akka.Discovery.Docker
         public string Endpoint { get; set; } = "unix:///var/run/docker.sock";
 
         /// <summary>
+        /// Indicates if the service discovery should look up in swarm nodes
+        /// </summary>
+        public bool UseSwarm { get; set; }
+
+        /// <summary>
         /// Builds the HOCON config
         /// </summary>
         /// <param name="builder"></param>

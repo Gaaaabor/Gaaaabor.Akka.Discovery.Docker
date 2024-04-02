@@ -3,6 +3,7 @@ using Akka.Discovery;
 using Akka.Event;
 using Docker.DotNet;
 using Docker.DotNet.Models;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -74,6 +75,36 @@ namespace Gaaaabor.Akka.Discovery.Docker
                 {
                     var containersListParameters = _dockerDiscoverySettings.ContainersListParameters ?? new ContainersListParameters();
                     containers = await client.Containers.ListContainersAsync(containersListParameters, cancellationToken);
+
+                    // TODO: Remove, this is just an early implementation, this should not hit live environment...
+                    if (_dockerDiscoverySettings.UseSwarm)
+                    {
+                        var swarmServices = await client.Swarm.ListServicesAsync(new ServicesListParameters(), cancellationToken);
+                        if (swarmServices != null)
+                        {
+                            var rawServices = JsonConvert.SerializeObject(swarmServices);
+                            _logger.Info($"[DockerServiceDiscovery] Got Services:\r\n {rawServices}");
+                        }
+
+                        var swarmNodes = await client.Swarm.ListNodesAsync(cancellationToken);
+                        if (swarmNodes != null)
+                        {
+                            var rawNodes = JsonConvert.SerializeObject(swarmNodes);
+                            _logger.Info($"[DockerServiceDiscovery] Got Nodes:\r\n {rawNodes}");
+
+                            var inspectionTasks = swarmNodes
+                            .Select(x => client.Swarm.InspectNodeAsync(x.ID, cancellationToken))
+                            .ToList();
+
+                            await Task.WhenAll(inspectionTasks);
+
+                            foreach (var inspectionTask in inspectionTasks)
+                            {
+                                var rawNodeListResponse = JsonConvert.SerializeObject(inspectionTask.Result);
+                                _logger.Info($"[DockerServiceDiscovery] Got Node info:\r\n {rawNodeListResponse}");
+                            }
+                        }
+                    }
                 }
 
                 if (containers is null)

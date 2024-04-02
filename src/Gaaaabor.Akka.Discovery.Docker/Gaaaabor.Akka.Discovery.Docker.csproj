@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <Title>Gaaaabor.Akka.Discovery.Docker</Title>
-    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/Gaaaabor/Gaaaabor.Akka.Discovery.Docker</RepositoryUrl>
     <PackageTags>akka;cluster;docker;service discovery;discovery</PackageTags>

@@ -16,7 +16,8 @@ namespace Gaaaabor.Akka.Discovery.Docker
             containerFilters: ImmutableList<Filter>.Empty,
             networkNameFilter: null,
             ports: ImmutableList<int>.Empty,
-            endpoint: null);
+            endpoint: null,
+            useSwarm: false);
 
         /// <summary>
         /// Filtering rules for the Docker API itself (API based filtering).
@@ -53,18 +54,25 @@ namespace Gaaaabor.Akka.Discovery.Docker
         /// </summary>
         public string Endpoint { get; }
 
+        /// <summary>
+        /// Indicates if the service discovery should look up in swarm nodes
+        /// </summary>
+        public bool UseSwarm { get; }
+
         public DockerDiscoverySettings(
             ContainersListParameters containersListParameters,
             ImmutableList<Filter> containerFilters,
             string networkNameFilter,
             ImmutableList<int> ports,
-            string endpoint)
+            string endpoint,
+            bool useSwarm)
         {
             ContainersListParameters = containersListParameters;
             ContainerFilters = containerFilters;
             NetworkNameFilter = networkNameFilter;
             Ports = ports;
             Endpoint = endpoint;
+            UseSwarm = useSwarm;
         }
 
         public static DockerDiscoverySettings Create(ActorSystem system) => Create(system.Settings.Config.GetConfig("akka.discovery.docker"));
@@ -76,7 +84,8 @@ namespace Gaaaabor.Akka.Discovery.Docker
                 ParseFiltersString(config.GetString("containerfilters")),
                 config.GetString("networknamefilter"),
                 config.GetIntList("ports").ToImmutableList(),
-                config.GetString("endpoint")
+                config.GetString("endpoint"),
+                config.GetBoolean("useswarm")
             );
         }
 
@@ -89,6 +98,8 @@ namespace Gaaaabor.Akka.Discovery.Docker
         public DockerDiscoverySettings WithPorts(ImmutableList<int> ports) => Copy(ports: ports);
 
         public DockerDiscoverySettings WithEndpoint(string endpoint) => Copy(endpoint: endpoint);
+
+        public DockerDiscoverySettings WithSwarm(bool useSwarm) => Copy(useSwarm: useSwarm);
 
         private static ContainersListParameters ParseContainersListParametersString(string containersListParameters)
         {
@@ -125,12 +136,14 @@ namespace Gaaaabor.Akka.Discovery.Docker
             ImmutableList<Filter> containerFilters = null,
             string networkNameFilter = null,
             ImmutableList<int> ports = null,
-            string endpoint = null)
+            string endpoint = null,
+            bool? useSwarm = null)
             => new DockerDiscoverySettings(
                 containersListParameters: containersListParameters ?? ContainersListParameters,
                 containerFilters: containerFilters ?? ContainerFilters,
                 networkNameFilter: networkNameFilter ?? NetworkNameFilter,
                 ports: ports ?? Ports,
-                endpoint: endpoint ?? Endpoint);
+                endpoint: endpoint ?? Endpoint,
+                useSwarm: useSwarm ?? UseSwarm);
     }
 }
