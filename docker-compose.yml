@@ -20,7 +20,6 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_HTTP_PORTS=80
-      - NetworkNameFilter=weather-bridge
     networks:
       - weather-bridge
     volumes:
