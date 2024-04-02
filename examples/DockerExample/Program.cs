@@ -19,7 +19,7 @@ builder.Services.AddAkka("weather", builder =>
     const int ManagementPort = 8558;
     const string Role = "WeatherForecast";
 
-    var useSwarm = bool.TryParse(Environment.GetEnvironmentVariable("UseSwarm"), out var rawUseSwarm) && rawUseSwarm;
+    var useSwarm = bool.TryParse(Environment.GetEnvironmentVariable("UseSwarm"), out var rawUseSwarm) && rawUseSwarm;    
 
     builder
         .WithRemoting(hostname: Dns.GetHostName(), port: 8091)
@@ -60,19 +60,18 @@ builder.Services.AddAkka("weather", builder =>
                 {
                     { "status", new Dictionary<string, bool>
                         {
-                            { "running", true},
-                            { "created", true},
+                            { "running", true}
                         }
                     }
                 }
             };
             options.ContainerFilters = new()
             {
-                //new Filter("names", "weather-example"),
+                new Filter("names", "weather-example"),
                 new Filter("labels", "com.docker.compose.service:weather-example")
             };
             options.UseSwarm = useSwarm;
-            //options.NetworkNameFilter = "weather-bridge";
+            options.NetworkNameFilter = "weather-bridge";
         })
         .WithShardRegion<SimpleShardRegion>(nameof(SimpleShardRegion), SimpleShardRegion.ActorFactory, new SimpleMessageExtractor(), new ShardOptions
         {

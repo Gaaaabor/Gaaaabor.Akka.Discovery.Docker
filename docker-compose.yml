@@ -11,18 +11,22 @@ volumes:
 services:
 
   weather-example:
-    build:
-        context: .
-        dockerfile: examples/DockerExample/Dockerfile
+    # To use example image from repo
+    image: ghcr.io/gaaaabor/gaaaabor.akka.discovery.docker/gaaaabor.akka.discovery.docker.dockerexample:docker_swarm_support
+    # To use example from local code
+    # build:
+    #     context: .
+    #     dockerfile: examples/DockerExample/Dockerfile
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_HTTP_PORTS=80
+      - NetworkNameFilter=weather-bridge
     networks:
       - weather-bridge
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     labels:
-      - com.docker.compose.service:weather-example
+      - com.docker.compose.service=weather-example
     ports:
       - 0:80
     deploy:

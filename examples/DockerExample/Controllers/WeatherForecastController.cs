@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace DockerExample.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("/")]
     public class WeatherForecastController : ControllerBase
     {
         private readonly ILogger<WeatherForecastController> _logger;
@@ -18,8 +18,7 @@ namespace DockerExample.Controllers
             _logger = logger;
             _actorRegistry = actorRegistry;
         }
-
-        [HttpGet(Name = "GetWeatherForecast")]
+        
         public async Task<List<WeatherForecastedEvent>> GetAsync()
         {
             _logger.LogInformation("[WeatherForecastController] - GetWeatherForecast - Invoked");
