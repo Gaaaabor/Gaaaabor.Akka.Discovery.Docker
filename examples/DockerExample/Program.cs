@@ -71,7 +71,7 @@ builder.Services.AddAkka("weather", builder =>
                 new Filter("labels", "com.docker.compose.service:weather-example")
             };
             options.UseSwarm = useSwarm;
-            options.NetworkNameFilter = "weather-bridge";
+            //options.NetworkNameFilter = "weather-bridge";
         })
         .WithShardRegion<SimpleShardRegion>(nameof(SimpleShardRegion), SimpleShardRegion.ActorFactory, new SimpleMessageExtractor(), new ShardOptions
         {
