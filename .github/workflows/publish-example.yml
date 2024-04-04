@@ -23,12 +23,31 @@ jobs:
       - name: Build image
         run: docker build . --file ./examples/DockerExample/Dockerfile --tag $IMAGE_NAME
 
+      - name: Build arm image
+        run: docker build . --file ./examples/DockerExample/Dockerfile --tag ${{ IMAGE_NAME }}_arm --build-arg BASE_IMAGE=mcr.microsoft.com/dotnet/aspnet:8.0-bookworm-slim-arm32v7 --build-arg BUILD_IMAGE=mcr.microsoft.com/dotnet/sdk:8.0-bookworm-slim
+
       - name: Log into registry
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u ${{ github.actor }} --password-stdin
 
       - name: Push image
         run: |
           IMAGE_ID=docker.pkg.github.com/${{ github.repository }}/$IMAGE_NAME
+          # Change all uppercase to lowercase
+          IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+          # Strip git ref prefix from version
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+          # Strip "v" prefix from tag name
+          [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+          # Use Docker `latest` tag convention
+          [ "$VERSION" == "master" ] && VERSION=latest
+          echo IMAGE_ID=$IMAGE_ID
+          echo VERSION=$VERSION
+          docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
+          docker push $IMAGE_ID:$VERSION
+
+      - name: Push arm image
+        run: |
+          IMAGE_ID=docker.pkg.github.com/${{ github.repository }}/${{ $IMAGE_NAME }}_arm
           # Change all uppercase to lowercase
           IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
           # Strip git ref prefix from version
