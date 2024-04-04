@@ -78,22 +78,7 @@ namespace Gaaaabor.Akka.Discovery.Docker
                     // TODO: Remove, this is just an early implementation, this should not hit live environment...
                     if (_dockerDiscoverySettings.UseSwarm)
                     {
-                        var swarmServices = await client.Swarm.ListServicesAsync(new ServicesListParameters(), CancellationToken.None);
-                        if (swarmServices != null)
-                        {
-                            foreach (var swarmService in swarmServices)
-                            {
-                                SwarmService service = await client.Swarm.InspectServiceAsync(swarmService.ID);
 
-                                foreach (var address in service.Endpoint.VirtualIPs.Select(x=>x.Addr))
-                                {
-                                    _logger.Info("[DockerServiceDiscovery] Found address: {0}", address);
-                                    addresses.Add(IPAddress.Parse(address.Split('/')[0]));
-                                }
-                            }
-                        }
-
-                        return addresses;
                     }
                 }
 
