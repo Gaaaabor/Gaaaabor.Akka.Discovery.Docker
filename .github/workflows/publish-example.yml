@@ -11,6 +11,7 @@ on:
 
 env:  
   IMAGE_NAME: gaaaabor.akka.discovery.docker.dockerexample
+  IMAGE_NAME_ARM: gaaaabor.akka.discovery.docker.dockerexample.arm
 
 jobs:
   bap:
@@ -24,7 +25,7 @@ jobs:
         run: docker build . --file ./examples/DockerExample/Dockerfile --tag $IMAGE_NAME
 
       - name: Build arm image
-        run: docker build . --file ./examples/DockerExample/Dockerfile --tag ${{ IMAGE_NAME }}_arm --build-arg BASE_IMAGE=mcr.microsoft.com/dotnet/aspnet:8.0-bookworm-slim-arm32v7 --build-arg BUILD_IMAGE=mcr.microsoft.com/dotnet/sdk:8.0-bookworm-slim
+        run: docker build . --file ./examples/DockerExample/Dockerfile --tag $IMAGE_NAME_ARM --build-arg BASE_IMAGE=mcr.microsoft.com/dotnet/aspnet:8.0-bookworm-slim-arm32v7 --build-arg BUILD_IMAGE=mcr.microsoft.com/dotnet/sdk:8.0-bookworm-slim
 
       - name: Log into registry
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u ${{ github.actor }} --password-stdin
@@ -47,7 +48,7 @@ jobs:
 
       - name: Push arm image
         run: |
-          IMAGE_ID=docker.pkg.github.com/${{ github.repository }}/${{ $IMAGE_NAME }}_arm
+          IMAGE_ID=docker.pkg.github.com/${{ github.repository }}/$IMAGE_NAME_ARM
           # Change all uppercase to lowercase
           IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
           # Strip git ref prefix from version
@@ -58,5 +59,5 @@ jobs:
           [ "$VERSION" == "master" ] && VERSION=latest
           echo IMAGE_ID=$IMAGE_ID
           echo VERSION=$VERSION
-          docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
+          docker tag IMAGE_NAME_ARM $IMAGE_ID:$VERSION
           docker push $IMAGE_ID:$VERSION
