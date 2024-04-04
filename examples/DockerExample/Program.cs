@@ -1,13 +1,18 @@
 using Akka.Actor;
 using Akka.Cluster.Hosting;
 using Akka.Cluster.Sharding;
+using Akka.Discovery.Config.Hosting;
 using Akka.Hosting;
 using Akka.Management;
 using Akka.Management.Cluster.Bootstrap;
 using Akka.Remote.Hosting;
+using Docker.DotNet;
+using Docker.DotNet.Models;
 using DockerExample.Cluster;
 using Gaaaabor.Akka.Discovery.Docker;
+using Newtonsoft.Json;
 using System.Net;
+using System.Threading;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,7 +24,7 @@ builder.Services.AddAkka("weather", builder =>
     const int ManagementPort = 8558;
     const string Role = "WeatherForecast";
 
-    var useSwarm = bool.TryParse(Environment.GetEnvironmentVariable("UseSwarm"), out var rawUseSwarm) && rawUseSwarm;    
+    var useSwarm = bool.TryParse(Environment.GetEnvironmentVariable("UseSwarm"), out var rawUseSwarm) && rawUseSwarm;
 
     builder
         .WithRemoting(hostname: Dns.GetHostName(), port: 8091)
@@ -87,4 +92,23 @@ builder.Services.AddAkka("weather", builder =>
 var app = builder.Build();
 app.UseAuthorization();
 app.MapControllers();
+app.MapGet("/services", async httpContext =>
+{
+    var services = new List<SwarmService>();
+    var dockerClientConfiguration = new DockerClientConfiguration(new Uri("unix:///var/run/docker.sock"));
+    using (var client = dockerClientConfiguration.CreateClient())
+    {
+        var swarmServices = await client.Swarm.ListServicesAsync(new ServicesListParameters(), CancellationToken.None);
+        if (swarmServices != null)
+        {
+            foreach (var swarmService in swarmServices)
+            {
+                SwarmService service = await client.Swarm.InspectServiceAsync(swarmService.ID);
+                services.Add(service);
+            }
+        }
+    }
+
+    await httpContext.Response.WriteAsJsonAsync(services, CancellationToken.None);
+});
 app.Run();

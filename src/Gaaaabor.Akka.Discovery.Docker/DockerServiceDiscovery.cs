@@ -79,31 +79,22 @@ namespace Gaaaabor.Akka.Discovery.Docker
                     // TODO: Remove, this is just an early implementation, this should not hit live environment...
                     if (_dockerDiscoverySettings.UseSwarm)
                     {
-                        var swarmServices = await client.Swarm.ListServicesAsync(new ServicesListParameters(), cancellationToken);
+                        var swarmServices = await client.Swarm.ListServicesAsync(new ServicesListParameters(), CancellationToken.None);
                         if (swarmServices != null)
                         {
-                            var rawServices = JsonConvert.SerializeObject(swarmServices);
-                            _logger.Info($"[DockerServiceDiscovery] Got Services:\r\n {rawServices}");
-                        }
-
-                        var swarmNodes = await client.Swarm.ListNodesAsync(cancellationToken);
-                        if (swarmNodes != null)
-                        {
-                            var rawNodes = JsonConvert.SerializeObject(swarmNodes);
-                            _logger.Info($"[DockerServiceDiscovery] Got Nodes:\r\n {rawNodes}");
-
-                            var inspectionTasks = swarmNodes
-                            .Select(x => client.Swarm.InspectNodeAsync(x.ID, cancellationToken))
-                            .ToList();
-
-                            await Task.WhenAll(inspectionTasks);
-
-                            foreach (var inspectionTask in inspectionTasks)
+                            foreach (var swarmService in swarmServices)
                             {
-                                var rawNodeListResponse = JsonConvert.SerializeObject(inspectionTask.Result);
-                                _logger.Info($"[DockerServiceDiscovery] Got Node info:\r\n {rawNodeListResponse}");
+                                SwarmService service = await client.Swarm.InspectServiceAsync(swarmService.ID);
+
+                                foreach (var ipAddress in service.Endpoint.VirtualIPs.Select(x => IPAddress.Parse(x.Addr)))
+                                {
+                                    _logger.Info("[DockerServiceDiscovery] Found address: {0}", ipAddress);
+                                    addresses.Add(ipAddress);
+                                }
                             }
                         }
+
+                        return addresses;
                     }
                 }
 
