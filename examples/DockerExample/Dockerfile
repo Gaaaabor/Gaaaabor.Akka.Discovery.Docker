@@ -20,10 +20,10 @@ RUN dotnet restore "examples/DockerExample/DockerExample.csproj"
 
 COPY . .
 WORKDIR "/src/examples/DockerExample"
-RUN dotnet build "DockerExample.csproj" -c Debug -o /app/build
+RUN dotnet build --no-restore "DockerExample.csproj" -c Debug -o /app/build
 
 FROM build AS publish
-RUN dotnet publish "DockerExample.csproj" -c Debug -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "DockerExample.csproj" -c Debug -o /app/publish
 
 FROM base AS final
 WORKDIR /app
