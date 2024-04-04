@@ -25,7 +25,7 @@ jobs:
         run: docker build . --file ./examples/DockerExample/Dockerfile --tag $IMAGE_NAME
 
       - name: Build arm image
-        run: docker build . --file ./examples/DockerExample/Dockerfile --tag $IMAGE_NAME_ARM --build-arg BASE_IMAGE=mcr.microsoft.com/dotnet/aspnet:8.0.3-jammy-arm32v7 --build-arg BUILD_IMAGE=mcr.microsoft.com/dotnet/sdk:8.0.203-jammy-arm32v7
+        run: docker build . --file ./examples/DockerExample/Dockerfile --tag $IMAGE_NAME_ARM --build-arg BASE_IMAGE=mcr.microsoft.com/dotnet/aspnet:8.0-jammy --build-arg BUILD_IMAGE=mcr.microsoft.com/dotnet/sdk:8.0-jammy
 
       - name: Log into registry
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u ${{ github.actor }} --password-stdin
