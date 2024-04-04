@@ -3,7 +3,6 @@ using Akka.Discovery;
 using Akka.Event;
 using Docker.DotNet;
 using Docker.DotNet.Models;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -86,10 +85,10 @@ namespace Gaaaabor.Akka.Discovery.Docker
                             {
                                 SwarmService service = await client.Swarm.InspectServiceAsync(swarmService.ID);
 
-                                foreach (var ipAddress in service.Endpoint.VirtualIPs.Select(x => IPAddress.Parse(x.Addr)))
+                                foreach (var address in service.Endpoint.VirtualIPs.Select(x=>x.Addr))
                                 {
-                                    _logger.Info("[DockerServiceDiscovery] Found address: {0}", ipAddress);
-                                    addresses.Add(ipAddress);
+                                    _logger.Info("[DockerServiceDiscovery] Found address: {0}", address);
+                                    addresses.Add(IPAddress.Parse(address.Split('/')[0]));
                                 }
                             }
                         }
