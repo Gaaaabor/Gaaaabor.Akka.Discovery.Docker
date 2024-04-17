@@ -147,29 +147,50 @@ namespace Gaaaabor.Akka.Discovery.Docker
             {
                 var separator = new[] { '/' };
 
-                var addresses = await client.Tasks
-                    .ListAsync(cancellationToken)
-                    .ContinueWith(x =>
-                    {
-                        if (x.IsCompleted && !x.IsFaulted && !x.IsCanceled)
-                        {
-                            return new List<string>();
-                        }
-
-                        return x.Result
-                            .Select(taskResponse => client.Tasks.InspectAsync(taskResponse.ID, cancellationToken))
-                            .Where(taskResponse => taskResponse.Result.Status.State == TaskState.Running)
-                            .SelectMany(taskResponse => taskResponse.Result.NetworksAttachments)
-                            .Where(networkAttachments => string.IsNullOrEmpty(_dockerDiscoverySettings.NetworkNameFilter) || networkAttachments.Network.Spec.Name.Contains(_dockerDiscoverySettings.NetworkNameFilter))
-                            .SelectMany(networkAttachments => networkAttachments.Addresses)
-                            .Select(address => address.Split(separator, options: StringSplitOptions.RemoveEmptyEntries)[0])
-                            .ToList();
-                    });
-
-                if (addresses.Count > 0)
+                var tasks = await client.Tasks.ListAsync(cancellationToken);
+                foreach (var task in tasks)
                 {
-                    rawAddresses.AddRange(addresses);
+                    var taskDetails = await client.Tasks.InspectAsync(task.ID, cancellationToken);
+                    if (taskDetails.Status.State != TaskState.Running || taskDetails.NetworksAttachments is null)
+                    {
+                        continue;
+                    }
+
+                    var addresses = taskDetails.NetworksAttachments
+                        .Where(networkAttachment => string.IsNullOrEmpty(_dockerDiscoverySettings.NetworkNameFilter) || networkAttachment.Network.Spec.Name.Contains(_dockerDiscoverySettings.NetworkNameFilter))
+                        .SelectMany(x => x.Addresses)
+                        .Select(address => address.Split(separator, options: StringSplitOptions.RemoveEmptyEntries)[0])
+                        .ToList();
+
+                    if (addresses.Count > 0)
+                    {
+                        rawAddresses.AddRange(addresses);
+                    }
                 }
+                
+                //var addresses = await client.Tasks
+                //    .ListAsync(cancellationToken)
+                //    .ContinueWith(x =>
+                //    {
+                //        if (x.IsCompleted && !x.IsFaulted && !x.IsCanceled)
+                //        {
+                //            return new List<string>();
+                //        }
+
+                //        return x.Result
+                //            .Select(taskResponse => client.Tasks.InspectAsync(taskResponse.ID, cancellationToken))
+                //            .Where(taskResponse => taskResponse.Result.Status.State == TaskState.Running)
+                //            .SelectMany(taskResponse => taskResponse.Result.NetworksAttachments)
+                //            .Where(networkAttachments => string.IsNullOrEmpty(_dockerDiscoverySettings.NetworkNameFilter) || networkAttachments.Network.Spec.Name.Contains(_dockerDiscoverySettings.NetworkNameFilter))
+                //            .SelectMany(networkAttachments => networkAttachments.Addresses)
+                //            .Select(address => address.Split(separator, options: StringSplitOptions.RemoveEmptyEntries)[0])
+                //            .ToList();
+                //    });
+
+                //if (addresses.Count > 0)
+                //{
+                //    rawAddresses.AddRange(addresses);
+                //}
             }
 
             return rawAddresses;
