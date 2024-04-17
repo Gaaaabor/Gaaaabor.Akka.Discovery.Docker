@@ -154,6 +154,7 @@ namespace Gaaaabor.Akka.Discovery.Docker
 
                         return x.Result
                             .Select(taskResponse => client.Tasks.InspectAsync(taskResponse.ID, cancellationToken))
+                            .Where(taskResponse => taskResponse.Result.Status.State == TaskState.Running)
                             .SelectMany(taskResponse => taskResponse.Result.NetworksAttachments)
                             .Where(networkAttachments => string.IsNullOrEmpty(_dockerDiscoverySettings.NetworkNameFilter) || networkAttachments.Network.Spec.Name.Contains(_dockerDiscoverySettings.NetworkNameFilter))
                             .SelectMany(networkAttachments => networkAttachments.Addresses)
