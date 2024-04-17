@@ -1,4 +1,5 @@
 using Docker.DotNet;
+using Newtonsoft.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -90,7 +91,8 @@ app.MapGet("/", async httpContext =>
         {
             var result = await client.Tasks.InspectAsync(task.ID);
             var addreses = result.NetworksAttachments.SelectMany(x => x.Addresses).ToList();
-            containers.Add($"{task.Name} - {task.ID}", addreses);
+            var rawTask = JsonConvert.SerializeObject(task);
+            containers.Add(rawTask, addreses);
         }
     }
 
