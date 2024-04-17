@@ -55,23 +55,23 @@ builder.Services.AddAkka("weather", builder =>
         {
             options.Endpoint = "unix:///var/run/docker.sock";
             options.Ports = new() { ManagementPort };
-            options.ContainersListParameters = new Docker.DotNet.Models.ContainersListParameters
-            {
-                All = true,
-                Filters = new Dictionary<string, IDictionary<string, bool>>
-                {
-                    { "status", new Dictionary<string, bool>
-                        {
-                            { "running", true}
-                        }
-                    }
-                }
-            };
-            options.ContainerFilters = new()
-            {
-                new Filter("names", "weather-example"),
-                new Filter("labels", "com.docker.compose.service:weather-example")
-            };
+            //options.ContainersListParameters = new Docker.DotNet.Models.ContainersListParameters
+            //{
+            //    All = true,
+            //    Filters = new Dictionary<string, IDictionary<string, bool>>
+            //    {
+            //        { "status", new Dictionary<string, bool>
+            //            {
+            //                { "running", true}
+            //            }
+            //        }
+            //    }
+            //};
+            //options.ContainerFilters = new()
+            //{
+            //    new Filter("names", "weather-example"),
+            //    new Filter("labels", "com.docker.compose.service:weather-example")
+            //};
             options.UseSwarm = useSwarm;
             options.NetworkNameFilter = "weather-bridge";
         })
