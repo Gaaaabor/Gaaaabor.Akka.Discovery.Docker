@@ -67,62 +67,36 @@ namespace Gaaaabor.Akka.Discovery.Docker
                     throw new Exception("Endpoint cannot be null or empty!");
                 }
 
-                IList<ContainerListResponse> containers;
-
+                var rawAddresses = new List<string>();
                 var dockerClientConfiguration = new DockerClientConfiguration(new Uri(endpoint));
-                using (var client = dockerClientConfiguration.CreateClient())
+                if (_dockerDiscoverySettings.UseSwarm)
                 {
-                    var containersListParameters = _dockerDiscoverySettings.ContainersListParameters ?? new ContainersListParameters();
-                    containers = await client.Containers.ListContainersAsync(containersListParameters, cancellationToken);
-
-                    // TODO: Remove, this is just an early implementation, this should not hit live environment...
-                    if (_dockerDiscoverySettings.UseSwarm)
+                    var swarmAddresses = await GetSwarmAddressesAsync(dockerClientConfiguration, cancellationToken);
+                    if (swarmAddresses.Count > 0)
                     {
-
+                        rawAddresses.AddRange(swarmAddresses);
+                    }
+                }
+                else
+                {
+                    var containerAddresses = await GetContainerAddressesAsync(dockerClientConfiguration, cancellationToken);
+                    if (containerAddresses.Count > 0)
+                    {
+                        rawAddresses.AddRange(containerAddresses);
                     }
                 }
 
-                if (containers is null)
+                _logger.Info("[DockerServiceDiscovery] Found services: {0}", rawAddresses?.Count ?? 0);
+
+                if (rawAddresses is null || rawAddresses.Count == 0)
                 {
                     return addresses;
                 }
 
-                var rawIpAddresses = new List<string>();
-
-                containers = ApplyContainerFilters(containers).ToList();
-
-                foreach (var container in containers)
+                foreach (var rawAddress in rawAddresses)
                 {
-                    if (container.NetworkSettings is null || container.NetworkSettings.Networks is null)
-                    {
-                        if (container.Ports != null)
-                        {
-                            rawIpAddresses.AddRange(container.Ports.Where(x => !string.IsNullOrEmpty(x.IP)).Select(x => x.IP));
-                        }
-
-                        continue;
-                    }
-
-                    foreach (var network in container.NetworkSettings.Networks)
-                    {
-                        if (string.IsNullOrEmpty(_dockerDiscoverySettings.NetworkNameFilter) || network.Key.Contains(_dockerDiscoverySettings.NetworkNameFilter))
-                        {
-                            rawIpAddresses.Add(network.Value.IPAddress);
-                        }
-                    }
-                }
-
-                _logger.Info("[DockerServiceDiscovery] Found services: {0}", rawIpAddresses?.Count ?? 0);
-
-                if (rawIpAddresses is null || rawIpAddresses.Count == 0)
-                {
-                    return addresses;
-                }
-
-                foreach (var rawIpAddress in rawIpAddresses)
-                {
-                    _logger.Info("[DockerServiceDiscovery] Found address: {0}", rawIpAddress);
-                    if (IPAddress.TryParse(rawIpAddress, out var ipAddress))
+                    _logger.Info("[DockerServiceDiscovery] Found address: {0}", rawAddress);
+                    if (IPAddress.TryParse(rawAddress, out var ipAddress))
                     {
                         addresses.Add(ipAddress);
                     }
@@ -160,6 +134,77 @@ namespace Gaaaabor.Akka.Discovery.Docker
             }
 
             return true;
+        }
+
+        private async Task<List<string>> GetSwarmAddressesAsync(DockerClientConfiguration dockerClientConfiguration, CancellationToken cancellationToken)
+        {
+            var rawAddresses = new List<string>();
+            using (var client = dockerClientConfiguration.CreateClient())
+            {
+                var separator = new[] { '/' };
+
+                var addresses = await client.Tasks
+                    .ListAsync(cancellationToken)
+                    .ContinueWith(x =>
+                    {
+                        if (x.IsCompleted && !x.IsFaulted && !x.IsCanceled)
+                        {
+                            return new List<string>();
+                        }
+
+                        return x.Result
+                            .Select(taskResponse => client.Tasks.InspectAsync(taskResponse.ID, cancellationToken))
+                            .SelectMany(taskResponse => taskResponse.Result.NetworksAttachments)
+                            .Where(networkAttachments => string.IsNullOrEmpty(_dockerDiscoverySettings.NetworkNameFilter) || networkAttachments.Network.Spec.Name.Contains(_dockerDiscoverySettings.NetworkNameFilter))
+                            .SelectMany(networkAttachments => networkAttachments.Addresses)
+                            .Select(address => address.Split(separator, options: StringSplitOptions.RemoveEmptyEntries)[0])
+                            .ToList();
+                    });
+
+                if (addresses.Count > 0)
+                {
+                    rawAddresses.AddRange(addresses);
+                }
+            }
+
+            return rawAddresses;
+        }
+
+        private async Task<List<string>> GetContainerAddressesAsync(DockerClientConfiguration dockerClientConfiguration, CancellationToken cancellationToken)
+        {
+            var rawAddresses = new List<string>();
+            IList<ContainerListResponse> containers;
+
+            using (var client = dockerClientConfiguration.CreateClient())
+            {
+                var containersListParameters = _dockerDiscoverySettings.ContainersListParameters ?? new ContainersListParameters();
+                containers = await client.Containers.ListContainersAsync(containersListParameters, cancellationToken);
+            }
+
+            containers = ApplyContainerFilters(containers).ToList();
+
+            foreach (var container in containers)
+            {
+                if (container.NetworkSettings is null || container.NetworkSettings.Networks is null)
+                {
+                    if (container.Ports != null)
+                    {
+                        rawAddresses.AddRange(container.Ports.Where(x => !string.IsNullOrEmpty(x.IP)).Select(x => x.IP));
+                    }
+
+                    continue;
+                }
+
+                foreach (var network in container.NetworkSettings.Networks)
+                {
+                    if (string.IsNullOrEmpty(_dockerDiscoverySettings.NetworkNameFilter) || network.Key.Contains(_dockerDiscoverySettings.NetworkNameFilter))
+                    {
+                        rawAddresses.Add(network.Value.IPAddress);
+                    }
+                }
+            }
+
+            return rawAddresses;
         }
 
         private void BuildSimpleExpressionCache()
