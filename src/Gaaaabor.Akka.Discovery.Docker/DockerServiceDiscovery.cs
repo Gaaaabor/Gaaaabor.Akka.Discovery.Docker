@@ -59,7 +59,7 @@ namespace Gaaaabor.Akka.Discovery.Docker
 
             try
             {
-                _logger.Info("[DockerServiceDiscovery] Getting addresses of Docker services...");
+                _logger.Info("[DockerServiceDiscovery] Getting addresses of Docker services");
 
                 var endpoint = _dockerDiscoverySettings.Endpoint;
                 if (string.IsNullOrWhiteSpace(endpoint))
@@ -71,6 +71,8 @@ namespace Gaaaabor.Akka.Discovery.Docker
                 var dockerClientConfiguration = new DockerClientConfiguration(new Uri(endpoint));
                 if (_dockerDiscoverySettings.UseSwarm)
                 {
+                    _logger.Info("[DockerServiceDiscovery] Using swarm mode");
+
                     var swarmAddresses = await GetSwarmAddressesAsync(dockerClientConfiguration, cancellationToken);
                     if (swarmAddresses.Count > 0)
                     {
@@ -79,6 +81,8 @@ namespace Gaaaabor.Akka.Discovery.Docker
                 }
                 else
                 {
+                    _logger.Info("[DockerServiceDiscovery] Using non-swarm mode");
+
                     var containerAddresses = await GetContainerAddressesAsync(dockerClientConfiguration, cancellationToken);
                     if (containerAddresses.Count > 0)
                     {
