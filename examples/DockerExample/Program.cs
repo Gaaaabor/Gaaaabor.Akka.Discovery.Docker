@@ -5,10 +5,8 @@ using Akka.Hosting;
 using Akka.Management;
 using Akka.Management.Cluster.Bootstrap;
 using Akka.Remote.Hosting;
-using Docker.DotNet;
 using DockerExample.Cluster;
 using Gaaaabor.Akka.Discovery.Docker;
-using Newtonsoft.Json;
 using System.Net;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -87,25 +85,5 @@ builder.Services.AddAkka("weather", builder =>
 });
 
 var app = builder.Build();
-app.UseAuthorization();
 app.MapControllers();
-app.MapGet("/", async httpContext =>
-{
-    var containers = new Dictionary<string, List<string>>();
-    var dockerClientConfiguration = new DockerClientConfiguration(new Uri("unix:///var/run/docker.sock"));
-
-    using (var client = dockerClientConfiguration.CreateClient())
-    {
-        var tasks = await client.Tasks.ListAsync();
-        foreach (var task in tasks)
-        {
-            var result = await client.Tasks.InspectAsync(task.ID);
-            var addreses = result.NetworksAttachments.SelectMany(x => x.Addresses).ToList();
-            var rawTask = JsonConvert.SerializeObject(task);
-            containers.Add(rawTask, addreses);
-        }
-    }
-
-    await httpContext.Response.WriteAsJsonAsync(containers, CancellationToken.None);
-});
 app.Run();
