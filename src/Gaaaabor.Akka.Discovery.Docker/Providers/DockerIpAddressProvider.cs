@@ -23,18 +23,11 @@ namespace Gaaaabor.Akka.Discovery.Docker.Providers
             {
                 Logger.Info("[DockerServiceDiscovery] Getting addresses of Docker services");
 
-                var endpoint = DockerDiscoverySettings.Endpoint;
-                if (string.IsNullOrWhiteSpace(endpoint))
-                {
-                    throw new Exception("Endpoint cannot be null or empty!");
-                }
-
                 var rawAddresses = new List<string>();
-                var dockerClientConfiguration = new DockerClientConfiguration(new Uri(endpoint));
 
                 Logger.Info("[DockerServiceDiscovery] Using non-swarm mode");
 
-                var containerAddresses = await GetContainerAddressesAsync(dockerClientConfiguration, cancellationToken);
+                var containerAddresses = await GetContainerAddressesAsync(DockerClientConfiguration, cancellationToken);
                 if (containerAddresses.Count > 0)
                 {
                     rawAddresses.AddRange(containerAddresses);

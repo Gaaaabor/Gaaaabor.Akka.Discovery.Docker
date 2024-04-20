@@ -12,12 +12,13 @@ namespace Gaaaabor.Akka.Discovery.Docker.Providers
 {
     public class DockerSwarmIpAddressProvider : IpAddressProviderBase
     {
+        private static char[] _separator = new[] { '/' };
+
         public DockerSwarmIpAddressProvider(DockerDiscoverySettings dockerDiscoverySettings, ILoggingAdapter logger) : base(dockerDiscoverySettings, logger)
         { }
 
         public override async Task<List<IPAddress>> GetIpAddressesAsync(CancellationToken cancellationToken)
         {
-
             var addresses = new List<IPAddress>();
 
             try
@@ -28,7 +29,7 @@ namespace Gaaaabor.Akka.Discovery.Docker.Providers
 
                 Logger.Info("[DockerServiceDiscovery] Using swarm mode");
 
-                var swarmAddresses = await GetSwarmAddressesAsync(DockerClientConfiguration, cancellationToken);
+                var swarmAddresses = await GetTaskAddressesAsync(DockerClientConfiguration, cancellationToken);
                 if (swarmAddresses.Count > 0)
                 {
                     rawAddresses.AddRange(swarmAddresses);
@@ -59,13 +60,10 @@ namespace Gaaaabor.Akka.Discovery.Docker.Providers
             return addresses;
         }
 
-        private async Task<List<string>> GetSwarmAddressesAsync(DockerClientConfiguration dockerClientConfiguration, CancellationToken cancellationToken)
+        private async Task<List<string>> GetTaskAddressesAsync(DockerClientConfiguration dockerClientConfiguration, CancellationToken cancellationToken)
         {
-            var rawAddresses = new List<string>();
             using (var client = dockerClientConfiguration.CreateClient())
             {
-                var separator = new[] { '/' };
-
                 var tasks = await client.Tasks.ListAsync(cancellationToken);
                 var taskDetailsTasks = new List<Task<TaskResponse>>();
                 foreach (var task in tasks)
@@ -74,30 +72,30 @@ namespace Gaaaabor.Akka.Discovery.Docker.Providers
                     taskDetailsTasks.Add(taskDetailsTask);
                 }
 
+                // TODO: Ehh... cleanup this
                 var taskDetailsResponse = await Task.WhenAll(taskDetailsTasks);
-                foreach (var taskDetails in taskDetailsResponse)
-                {
-                    if (taskDetails.Status.State != TaskState.Running || taskDetails.NetworksAttachments is null)
-                    {
-                        continue;
-                    }
 
-                    // TODO: Add filter on labels, cleanup the code, make it faster...
-
-                    var addresses = taskDetails.NetworksAttachments
-                        .Where(networkAttachment => string.IsNullOrEmpty(DockerDiscoverySettings.NetworkNameFilter) || networkAttachment.Network.Spec.Name.Contains(DockerDiscoverySettings.NetworkNameFilter))
-                        .SelectMany(x => x.Addresses)
-                        .Select(address => address.Split(separator, options: StringSplitOptions.RemoveEmptyEntries)[0])
-                        .ToList();
-
-                    if (addresses.Count > 0)
-                    {
-                        rawAddresses.AddRange(addresses);
-                    }
-                }
+                return GetTaskIpAddresses(taskDetailsResponse);
             }
+        }
 
-            return rawAddresses;
+        private List<string> GetTaskIpAddresses(TaskResponse[] taskResponse)
+        {
+            return taskResponse
+                .Where(taskDetails => taskDetails.Status.State == TaskState.Running && taskDetails.NetworksAttachments != null)
+                .SelectMany(GetNetworkAttachmentIpAddresses)
+                .ToList();
+        }
+
+        private List<string> GetNetworkAttachmentIpAddresses(TaskResponse taskDetails)
+        {
+            // TODO: Add more filters
+
+            return taskDetails.NetworksAttachments
+                .Where(networkAttachment => string.IsNullOrEmpty(DockerDiscoverySettings.NetworkNameFilter) || networkAttachment.Network.Spec.Name.Contains(DockerDiscoverySettings.NetworkNameFilter))
+                .SelectMany(x => x.Addresses)
+                .Select(address => address.Split(_separator, options: StringSplitOptions.RemoveEmptyEntries)[0])
+                .ToList();
         }
     }
 }
