@@ -13,6 +13,7 @@ namespace Gaaaabor.Akka.Discovery.Docker
     {
         public static readonly DockerDiscoverySettings Empty = new DockerDiscoverySettings(
             containersListParameters: null,
+            tasksListParameters: null,
             containerFilters: ImmutableList<Filter>.Empty,
             networkNameFilter: null,
             ports: ImmutableList<int>.Empty,
@@ -24,6 +25,11 @@ namespace Gaaaabor.Akka.Discovery.Docker
         /// For more info see <see href="https://github.com/dotnet/Docker.DotNet/issues/303"/>
         /// </summary>
         public ContainersListParameters ContainersListParameters { get; }
+
+        /// <summary>
+        /// Filtering rules for the Docker API itself (API based filtering) for Swarm mode.
+        /// </summary>
+        public TasksListParameters TasksListParameters { get; set; }
 
         /// <summary>
         /// Additional filtering rules to be applied to ContainerListResponse (API result filtering).
@@ -61,6 +67,7 @@ namespace Gaaaabor.Akka.Discovery.Docker
 
         public DockerDiscoverySettings(
             ContainersListParameters containersListParameters,
+            TasksListParameters tasksListParameters,
             ImmutableList<Filter> containerFilters,
             string networkNameFilter,
             ImmutableList<int> ports,
@@ -68,6 +75,7 @@ namespace Gaaaabor.Akka.Discovery.Docker
             bool useSwarm)
         {
             ContainersListParameters = containersListParameters;
+            TasksListParameters = tasksListParameters;
             ContainerFilters = containerFilters;
             NetworkNameFilter = networkNameFilter;
             Ports = ports;
@@ -81,6 +89,7 @@ namespace Gaaaabor.Akka.Discovery.Docker
         {
             return new DockerDiscoverySettings(
                 ParseContainersListParametersString(config.GetString("containerslistparameters")),
+                ParseTasksListParametersString(config.GetString("taskslistparameters")),
                 ParseFiltersString(config.GetString("containerfilters")),
                 config.GetString("networknamefilter"),
                 config.GetIntList("ports").ToImmutableList(),
@@ -104,6 +113,11 @@ namespace Gaaaabor.Akka.Discovery.Docker
         private static ContainersListParameters ParseContainersListParametersString(string containersListParameters)
         {
             return JsonSerializer.Deserialize<ContainersListParameters>(containersListParameters);
+        }
+
+        private static TasksListParameters ParseTasksListParametersString(string tasksListParameters)
+        {
+            return JsonSerializer.Deserialize<TasksListParameters>(tasksListParameters);
         }
 
         private static ImmutableList<Filter> ParseFiltersString(string filtersString)
@@ -133,6 +147,7 @@ namespace Gaaaabor.Akka.Discovery.Docker
 
         private DockerDiscoverySettings Copy(
             ContainersListParameters containersListParameters = null,
+            TasksListParameters tasksListParameters = null,
             ImmutableList<Filter> containerFilters = null,
             string networkNameFilter = null,
             ImmutableList<int> ports = null,
@@ -140,6 +155,7 @@ namespace Gaaaabor.Akka.Discovery.Docker
             bool? useSwarm = null)
             => new DockerDiscoverySettings(
                 containersListParameters: containersListParameters ?? ContainersListParameters,
+                tasksListParameters: tasksListParameters ?? TasksListParameters,
                 containerFilters: containerFilters ?? ContainerFilters,
                 networkNameFilter: networkNameFilter ?? NetworkNameFilter,
                 ports: ports ?? Ports,

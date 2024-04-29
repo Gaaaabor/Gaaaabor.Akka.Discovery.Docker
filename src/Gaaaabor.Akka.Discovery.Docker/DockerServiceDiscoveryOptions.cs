@@ -21,7 +21,12 @@ namespace Gaaaabor.Akka.Discovery.Docker
         /// Filtering rules for the Docker API itself (API based filtering).
         /// For more info see <see href="https://github.com/dotnet/Docker.DotNet/issues/303"/>
         /// </summary>
-        public ContainersListParameters ContainersListParameters { get; set; }
+        public ContainersListParameters ContainersListParameters { get; set; } = new ContainersListParameters();
+
+        /// <summary>
+        /// Filtering rules for the Docker API itself (API based filtering) for Swarm mode.
+        /// </summary>
+        public TasksListParameters TasksListParameters { get; set; } = new TasksListParameters();
 
         /// <summary>
         /// Additional filtering rules to be applied to ContainerListResponse (API result filtering).
@@ -73,7 +78,12 @@ namespace Gaaaabor.Akka.Discovery.Docker
                 stringBuilder.AppendLine($"containerslistparameters = {JsonSerializer.Serialize(ContainersListParameters).ToHocon()}");
             }
 
-            if (ContainerFilters != null)
+            if (TasksListParameters != null)
+            {
+                stringBuilder.AppendLine($"taskslistparameters = {JsonSerializer.Serialize(TasksListParameters).ToHocon()}");
+            }
+
+            if (ContainerFilters != null && ContainerFilters.Count > 0)
             {
                 var filters = ContainerFilters
                     .SelectMany(filter => filter.Values.Select(value => (filter.Name, Tag: value)))
@@ -82,22 +92,22 @@ namespace Gaaaabor.Akka.Discovery.Docker
                 stringBuilder.AppendLine($"containerfilters = {string.Join(";", filters).ToHocon()}");
             }
 
-            if (!string.IsNullOrEmpty(NetworkNameFilter))
+            if (!string.IsNullOrWhiteSpace(NetworkNameFilter))
             {
                 stringBuilder.AppendLine($"networknamefilter = {NetworkNameFilter.ToHocon()}");
             }
 
-            if (Ports != null)
+            if (Ports != null && Ports.Count > 0)
             {
                 stringBuilder.AppendLine($"ports = [{string.Join(",", Ports)}]");
             }
 
-            if (!string.IsNullOrEmpty(Endpoint))
+            if (!string.IsNullOrWhiteSpace(Endpoint))
             {
                 stringBuilder.AppendLine($"endpoint = {Endpoint.ToHocon()}");
             }
 
-            stringBuilder.AppendLine($"useswarm = {UseSwarm.ToHocon()}");            
+            stringBuilder.AppendLine($"useswarm = {UseSwarm.ToHocon()}");
 
             stringBuilder.AppendLine("}");
 

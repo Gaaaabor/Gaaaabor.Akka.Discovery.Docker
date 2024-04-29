@@ -4,7 +4,6 @@ using Akka.Event;
 using Gaaaabor.Akka.Discovery.Docker.Providers;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -15,7 +14,7 @@ namespace Gaaaabor.Akka.Discovery.Docker
         private readonly ExtendedActorSystem _system;
         private readonly ILoggingAdapter _logger;
         private readonly DockerDiscoverySettings _dockerDiscoverySettings;
-        
+
         private readonly IpAddressProviderBase _ipAddressProvider;
 
         public DockerServiceDiscovery(ExtendedActorSystem system)
@@ -25,8 +24,8 @@ namespace Gaaaabor.Akka.Discovery.Docker
             _dockerDiscoverySettings = DockerDiscoverySettings.Create(system.Settings.Config.GetConfig("akka.discovery.docker"));
 
             _ipAddressProvider = _dockerDiscoverySettings.UseSwarm
-                ? new DockerIpAddressProvider(_dockerDiscoverySettings, _logger)
-                : (IpAddressProviderBase)new DockerSwarmIpAddressProvider(_dockerDiscoverySettings, _logger);
+                ? (IpAddressProviderBase)new DockerSwarmIpAddressProvider(_dockerDiscoverySettings, _logger)
+                : new DockerIpAddressProvider(_dockerDiscoverySettings, _logger);
         }
 
         public override async Task<Resolved> Lookup(Lookup lookup, TimeSpan resolveTimeout)
@@ -34,14 +33,14 @@ namespace Gaaaabor.Akka.Discovery.Docker
             var cancellationTokenSource = new CancellationTokenSource(resolveTimeout);
 
             var resolvedTargets = new List<ResolvedTarget>();
-            if (_dockerDiscoverySettings?.Ports is null || !_dockerDiscoverySettings.Ports.Any())
+            if (_dockerDiscoverySettings?.Ports is null || _dockerDiscoverySettings.Ports.Count == 0)
             {
                 return new Resolved(lookup.ServiceName, resolvedTargets);
             }
 
-            var addresses = await _ipAddressProvider.GetIpAddressesAsync(cancellationTokenSource.Token);
+            var ipAddresses = await _ipAddressProvider.GetIpAddressesAsync(cancellationTokenSource.Token);
 
-            foreach (var address in addresses)
+            foreach (var address in ipAddresses)
             {
                 foreach (var port in _dockerDiscoverySettings.Ports)
                 {

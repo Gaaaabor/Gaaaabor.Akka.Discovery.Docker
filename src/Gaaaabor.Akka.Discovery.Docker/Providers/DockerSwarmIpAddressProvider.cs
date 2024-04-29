@@ -12,7 +12,7 @@ namespace Gaaaabor.Akka.Discovery.Docker.Providers
 {
     public class DockerSwarmIpAddressProvider : IpAddressProviderBase
     {
-        private static char[] _separator = new[] { '/' };
+        private static readonly char[] _separator = new[] { '/' };
 
         public DockerSwarmIpAddressProvider(DockerDiscoverySettings dockerDiscoverySettings, ILoggingAdapter logger) : base(dockerDiscoverySettings, logger)
         { }
@@ -64,35 +64,34 @@ namespace Gaaaabor.Akka.Discovery.Docker.Providers
         {
             using (var client = dockerClientConfiguration.CreateClient())
             {
-                var tasks = await client.Tasks.ListAsync(cancellationToken);
-                var taskDetailsTasks = new List<Task<TaskResponse>>();
-                foreach (var task in tasks)
+                var tasksListParameters = DockerDiscoverySettings.TasksListParameters ?? new TasksListParameters();
+                var tasks = await client.Tasks.ListAsync(tasksListParameters, cancellationToken);
+                var taskDetailsTasks = tasks.Select(task =>
                 {
-                    var taskDetailsTask = client.Tasks.InspectAsync(task.ID, cancellationToken);
-                    taskDetailsTasks.Add(taskDetailsTask);
-                }
+                    return client.Tasks
+                        .InspectAsync(task.ID, cancellationToken)
+                        .ContinueWith(x => GetNetworkAttachmentIpAddresses(x.Result));
+                });
 
-                // TODO: Ehh... cleanup this
                 var taskDetailsResponse = await Task.WhenAll(taskDetailsTasks);
-
-                return GetTaskIpAddresses(taskDetailsResponse);
+                return taskDetailsResponse.SelectMany(ipAddress => ipAddress).ToList();
             }
-        }
-
-        private List<string> GetTaskIpAddresses(TaskResponse[] taskResponse)
-        {
-            return taskResponse
-                .Where(taskDetails => taskDetails.Status.State == TaskState.Running && taskDetails.NetworksAttachments != null)
-                .SelectMany(GetNetworkAttachmentIpAddresses)
-                .ToList();
         }
 
         private List<string> GetNetworkAttachmentIpAddresses(TaskResponse taskDetails)
         {
+            if (taskDetails.Status.State != TaskState.Running || taskDetails.NetworksAttachments is null)
+            {
+                return new List<string>();
+            }
+
             // TODO: Add more filters
 
-            return taskDetails.NetworksAttachments
-                .Where(networkAttachment => string.IsNullOrEmpty(DockerDiscoverySettings.NetworkNameFilter) || networkAttachment.Network.Spec.Name.Contains(DockerDiscoverySettings.NetworkNameFilter))
+            IEnumerable<NetworkAttachment> networksAttachmentsQuery = string.IsNullOrWhiteSpace(DockerDiscoverySettings.NetworkNameFilter)
+                ? taskDetails.NetworksAttachments
+                : taskDetails.NetworksAttachments.Where(networkAttachment => networkAttachment.Network.Spec.Name.Contains(DockerDiscoverySettings.NetworkNameFilter));
+
+            return networksAttachmentsQuery
                 .SelectMany(x => x.Addresses)
                 .Select(address => address.Split(_separator, options: StringSplitOptions.RemoveEmptyEntries)[0])
                 .ToList();
