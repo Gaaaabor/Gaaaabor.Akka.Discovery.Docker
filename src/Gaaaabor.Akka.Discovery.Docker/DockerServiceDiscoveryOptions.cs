@@ -4,6 +4,7 @@ using Docker.DotNet.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 
@@ -55,7 +56,7 @@ namespace Gaaaabor.Akka.Discovery.Docker
         /// <summary>        
         /// Docker API endpoint.
         /// </summary>
-        public string Endpoint { get; set; } = "unix:///var/run/docker.sock";
+        public string Endpoint { get; set; } = GetDockerEndpoint();
 
         /// <summary>
         /// Indicates if the service discovery should look up in swarm nodes
@@ -112,6 +113,21 @@ namespace Gaaaabor.Akka.Discovery.Docker
             stringBuilder.AppendLine("}");
 
             builder.AddHocon(stringBuilder.ToString(), HoconAddMode.Prepend);
+        }
+
+        private static string GetDockerEndpoint()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                return "npipe://./pipe/docker_engine";
+            }
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                return "unix:/var/run/docker.sock";
+            }
+
+            throw new Exception("Unable to determine OS!");
         }
     }
 }
