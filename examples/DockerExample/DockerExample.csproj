@@ -8,12 +8,13 @@
 		<DockerfileContext>..\..</DockerfileContext>
 		<DockerComposeProjectPath>..\..\docker-compose.dcproj</DockerComposeProjectPath>
 		<UserSecretsId>63dae6db-16a3-4abc-839f-10f16d074d8d</UserSecretsId>
-		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+		<GeneratePackageOnBuild>False</GeneratePackageOnBuild>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Akka.Cluster.Hosting" Version="1.5.13" />
 		<PackageReference Include="Akka.Management" Version="1.5.7" />
+		<PackageReference Include="Docker.DotNet" Version="3.125.15" />
 	</ItemGroup>
 
 	<ItemGroup>

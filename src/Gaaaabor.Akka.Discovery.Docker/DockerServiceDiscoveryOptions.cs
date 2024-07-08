@@ -4,6 +4,7 @@ using Docker.DotNet.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 
@@ -21,7 +22,12 @@ namespace Gaaaabor.Akka.Discovery.Docker
         /// Filtering rules for the Docker API itself (API based filtering).
         /// For more info see <see href="https://github.com/dotnet/Docker.DotNet/issues/303"/>
         /// </summary>
-        public ContainersListParameters ContainersListParameters { get; set; }
+        public ContainersListParameters ContainersListParameters { get; set; } = new ContainersListParameters();
+
+        /// <summary>
+        /// Filtering rules for the Docker API itself (API based filtering) for Swarm mode.
+        /// </summary>
+        public TasksListParameters TasksListParameters { get; set; } = new TasksListParameters();
 
         /// <summary>
         /// Additional filtering rules to be applied to ContainerListResponse (API result filtering).
@@ -50,7 +56,12 @@ namespace Gaaaabor.Akka.Discovery.Docker
         /// <summary>        
         /// Docker API endpoint.
         /// </summary>
-        public string Endpoint { get; set; } = "unix:///var/run/docker.sock";
+        public string Endpoint { get; set; } = GetDockerEndpoint();
+
+        /// <summary>
+        /// Indicates if the service discovery should look up in swarm nodes
+        /// </summary>
+        public bool UseSwarm { get; set; }
 
         /// <summary>
         /// Builds the HOCON config
@@ -68,7 +79,12 @@ namespace Gaaaabor.Akka.Discovery.Docker
                 stringBuilder.AppendLine($"containerslistparameters = {JsonSerializer.Serialize(ContainersListParameters).ToHocon()}");
             }
 
-            if (ContainerFilters != null)
+            if (TasksListParameters != null)
+            {
+                stringBuilder.AppendLine($"taskslistparameters = {JsonSerializer.Serialize(TasksListParameters).ToHocon()}");
+            }
+
+            if (ContainerFilters != null && ContainerFilters.Count > 0)
             {
                 var filters = ContainerFilters
                     .SelectMany(filter => filter.Values.Select(value => (filter.Name, Tag: value)))
@@ -77,24 +93,41 @@ namespace Gaaaabor.Akka.Discovery.Docker
                 stringBuilder.AppendLine($"containerfilters = {string.Join(";", filters).ToHocon()}");
             }
 
-            if (!string.IsNullOrEmpty(NetworkNameFilter))
+            if (!string.IsNullOrWhiteSpace(NetworkNameFilter))
             {
                 stringBuilder.AppendLine($"networknamefilter = {NetworkNameFilter.ToHocon()}");
             }
 
-            if (Ports != null)
+            if (Ports != null && Ports.Count > 0)
             {
                 stringBuilder.AppendLine($"ports = [{string.Join(",", Ports)}]");
             }
 
-            if (!string.IsNullOrEmpty(Endpoint))
+            if (!string.IsNullOrWhiteSpace(Endpoint))
             {
                 stringBuilder.AppendLine($"endpoint = {Endpoint.ToHocon()}");
             }
 
+            stringBuilder.AppendLine($"useswarm = {UseSwarm.ToHocon()}");
+
             stringBuilder.AppendLine("}");
 
             builder.AddHocon(stringBuilder.ToString(), HoconAddMode.Prepend);
+        }
+
+        private static string GetDockerEndpoint()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                return "npipe://./pipe/docker_engine";
+            }
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                return "unix:/var/run/docker.sock";
+            }
+
+            throw new Exception("Unable to determine OS!");
         }
     }
 }

@@ -129,4 +129,5 @@ For more info in Akka Cluster check the project's site [Here](https://getakka.ne
 
 The attached [ExampleContainerListResponse.json](https://github.com/Gaaaabor/Gaaaabor.Akka.Discovery.Docker/blob/master/examples/DockerExample/ExampleContainerListResponse.json) contains a serialized example for a ContainerListResponse.  
 This is the response of the Docker.DotNet library's "ListContainersAsync" method used to search for containers as potential members of the cluster.  
-I attached the example to help create ContainerFilters (API result filters).  
+
+I attached the example to help create ContainerFilters (API result filters). 
