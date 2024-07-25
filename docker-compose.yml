@@ -2,8 +2,8 @@ version: '3.4'
 
 networks:
   weather-bridge:
-    driver: overlay
-    attachable: true
+    # driver: overlay
+    # attachable: true
     
 
 volumes:
@@ -14,15 +14,16 @@ services:
 
   weather-example:
     # To use example image from repo
-    image: ghcr.io/gaaaabor/gaaaabor.akka.discovery.docker/gaaaabor.akka.discovery.docker.dockerexample:docker_swarm_support
+    #image: ghcr.io/gaaaabor/gaaaabor.akka.discovery.docker/gaaaabor.akka.discovery.docker.dockerexample:docker_swarm_support
     # To use example from local code
-    # build:
-    #     context: .
-    #     dockerfile: examples/DockerExample/Dockerfile
+    build:
+        context: .
+        dockerfile: examples/DockerExample/Dockerfile
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_HTTP_PORTS=80
-      - UseSwarm=True
+      - UseSwarm=False
+      - ConnectionString=weather-redis,password=EXAMPLEPASS
     networks:
       - weather-bridge
     volumes:
@@ -32,33 +33,40 @@ services:
     ports:
       - 0:80
     deploy:
-      replicas: 2
-      placement:
-        constraints:
-          - node.labels.architecture == amd
+      replicas: 3
+      # placement:
+      #   constraints:
+      #     - node.labels.architecture == amd
 
-  weather-example-arm:
-    # To use example image from repo
-    image: ghcr.io/gaaaabor/gaaaabor.akka.discovery.docker/gaaaabor.akka.discovery.docker.dockerexample.arm:docker_swarm_support
-    # To use example from local code
-    # build:
-    #     context: .
-    #     dockerfile: examples/DockerExample/Dockerfile
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_HTTP_PORTS=80
-      - UseSwarm=True
+  weather-redis:
+    image: redis:6.2-alpine
+    hostname: weather-redis
+    command: redis-server --save 20 1 --requirepass EXAMPLEPASS
     networks:
       - weather-bridge
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    labels:
-      - com.docker.compose.service=weather-example
-    ports:
-      - 0:80
-    deploy:
-      replicas: 2
-      placement:
-        constraints:
-          - node.labels.architecture == arm
+
+  # weather-example-arm:
+  #   # To use example image from repo
+  #   image: ghcr.io/gaaaabor/gaaaabor.akka.discovery.docker/gaaaabor.akka.discovery.docker.dockerexample.arm:docker_swarm_support
+  #   # To use example from local code
+  #   # build:
+  #   #     context: .
+  #   #     dockerfile: examples/DockerExample/Dockerfile
+  #   environment:
+  #     - ASPNETCORE_ENVIRONMENT=Development
+  #     - ASPNETCORE_HTTP_PORTS=80
+  #     - UseSwarm=True
+  #   networks:
+  #     - weather-bridge
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro
+  #   labels:
+  #     - com.docker.compose.service=weather-example
+  #   ports:
+  #     - 0:80
+  #   deploy:
+  #     replicas: 2
+  #     placement:
+  #       constraints:
+  #         - node.labels.architecture == arm
       

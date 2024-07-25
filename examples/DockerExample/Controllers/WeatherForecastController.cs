@@ -14,26 +14,35 @@ namespace DockerExample.Controllers
         private readonly IActorRegistry _actorRegistry;
         private readonly TimeSpan _askTimeoutInSec = TimeSpan.FromSeconds(2);
 
-        public WeatherForecastController(ILogger<WeatherForecastController> logger, IActorRegistry actorRegistry)
+        public WeatherForecastController(
+            ILogger<WeatherForecastController> logger,
+            IActorRegistry actorRegistry)
         {
             _logger = logger;
             _actorRegistry = actorRegistry;
         }
 
-        public async Task<List<WeatherForecastedEvent>> GetAsync(CancellationToken cancellationToken)
+        public async Task<ActionResult> GetAsync(CancellationToken cancellationToken)
         {
             var entityId = Random.Shared.Next(1, 100).ToString();
 
             _logger.LogInformation($"[WeatherForecastController] - Sent ForecastWeatherCommand for Entity \"{entityId}\"");
 
-            var weatherForecastActor = _actorRegistry.Get<SimpleShardRegion>();
-            var weatherForecastedEvent = await weatherForecastActor.Ask<List<WeatherForecastedEvent>>(new SimpleShardEnvelope
+            var message = new SimpleShardEnvelope
             {
                 EntityId = entityId,
                 Message = new ForecastWeatherCommand()
-            }, _askTimeoutInSec, cancellationToken);
+            };
 
-            return weatherForecastedEvent;
+            var nonEarthLikePlanetShardRegion = _actorRegistry.Get<NonEarthLikePlanetShardRegion>();
+            var nonEarthLikeResult = await nonEarthLikePlanetShardRegion
+                .Ask<List<WeatherForecastedEvent>>(message, _askTimeoutInSec, cancellationToken);
+
+            var earthLikePlanetShardRegion = _actorRegistry.Get<EarthLikePlanetShardRegion>();
+            var earthLikeResult = await earthLikePlanetShardRegion
+                .Ask<List<WeatherForecastedEvent>>(message, _askTimeoutInSec, cancellationToken);
+
+            return Ok(new[] { nonEarthLikeResult, earthLikeResult });
         }
     }
 }

@@ -21,7 +21,7 @@ namespace DockerExample.Cluster
         public string ShardId(object message)
         {
             var entityId = EntityId(message);
-            var shardId = _shardCache[Math.Abs(MurmurHash.StringHash(entityId)) % _maxNumberOfShards];
+            var shardId = ShardId(entityId);
             return shardId;
         }
 
@@ -29,9 +29,7 @@ namespace DockerExample.Cluster
         {
             return message switch
             {
-                GetEntityLocation getEntityLocation => getEntityLocation.EntityId,
                 SimpleShardEnvelope simpleShardEnvelope => simpleShardEnvelope.EntityId,
-                ShardRegion.StartEntity startEntity => startEntity.EntityId,
                 _ => "None",
             };
         }
@@ -44,6 +42,11 @@ namespace DockerExample.Cluster
             }
 
             return message;
+        }
+
+        public string ShardId(string entityId, object? messageHint = null)
+        {
+            return _shardCache[Math.Abs(MurmurHash.StringHash(entityId)) % _maxNumberOfShards];
         }
     }
 }

@@ -16,7 +16,7 @@ namespace Gaaaabor.Akka.Discovery.Docker.Tests
             _testOutputHelper = testOutputHelper;
         }
 
-        [Fact]
+        //[Fact] //Ignore this is for experiments
         public async Task CreateDockerSwarmInDocker()
         {
             try

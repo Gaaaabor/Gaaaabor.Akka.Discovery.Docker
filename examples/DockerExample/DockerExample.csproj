@@ -12,8 +12,9 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Akka.Cluster.Hosting" Version="1.5.13" />
-		<PackageReference Include="Akka.Management" Version="1.5.7" />
+		<PackageReference Include="Akka.Cluster.Hosting" Version="1.5.25" />
+		<PackageReference Include="Akka.Management" Version="1.5.26.1" />
+		<PackageReference Include="Akka.Persistence.Redis.Hosting" Version="1.5.24" />
 		<PackageReference Include="Docker.DotNet" Version="3.125.15" />
 	</ItemGroup>
 
